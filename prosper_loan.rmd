@@ -1,0 +1,1003 @@
+Prosper Loans Exploration by Paron Sarampakhul
+========================================================
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, packages}
+# Load all of the packages that you end up using in your analysis in this code
+# chunk.
+
+# Notice that the parameter "echo" was set to FALSE for this code chunk. This
+# prevents the code from displaying in the knitted HTML output. You should set
+# echo=FALSE for all code chunks in your file, unless it makes sense for your
+# report to show the code that generated a particular plot.
+
+# The other parameters for "message" and "warning" should also be set to FALSE
+# for other code chunks once you have verified that each plot comes out as you
+# want it to. This will clean up the flow of your report.
+
+library(ggplot2)
+library(scales)
+library(psych)
+library(car)
+library(RColorBrewer)
+library(memisc)
+```
+
+```{r echo=FALSE,message=FALSE, warning=FALSE,Load_the_Data}
+# Load the Data
+loan_data <- read.csv(file="prosperLoanData.csv", header=TRUE, sep=",")
+```
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Overview_dimension}
+dim(loan_data)
+
+```
+
+```{r echo=FALSE,message=FALSE, warning=FALSE,Overview_structure}
+str(loan_data)
+```
+
+```{r echo=FALSE,message=FALSE, warning=FALSE,Overview_summary}
+summary(loan_data)
+```
+
+> The dataset contains 81 variables with 113,937 observations.
+
+
+# Univariate Plots Section
+
+```{r echo=FALSE,message=FALSE,warning=FALSE,Univariate_Plots1}
+ggplot(data=loan_data, aes(as.Date(ListingCreationDate))) +
+  geom_bar() +
+  scale_x_date(date_breaks='6 months', labels = date_format("%Y-%b")) +
+  labs(title="Histogram for Listing Creation Date") +
+  labs(x="ListingCreationDate", y="Count") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+```
+
+> I see that from the dataset that there are 2 columns for credit grades,\
+pre-2009 and after July 2009, therefore I want to see the number of listings\
+over time. It turns out that there is a gap between late 2008 and mid 2009 \
+where there are no listings. I wonder whether the gap has something to do \
+with the Financial Crisis in late 2008. There is an increasing trend for \
+number of listings from 2009 to 2013. This could be because the economy \
+started to recover.
+
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Univariate_Plots2}
+ggplot(data=subset(loan_data,as.character(loan_data$CreditGrade)!=""),
+       aes(CreditGrade)) +
+  geom_bar() +
+  labs(title="Histogram for Credit Grade (Pre-2009)") +
+  labs(x="Credit Grade", y="Count") +
+  scale_x_discrete(limits=c("AA","A","B","C","D","E","HR","NC")) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Univariate_Plots3}
+ggplot(data=subset(loan_data,as.character(loan_data$ProsperRating..Alpha.)!=""),
+       aes(ProsperRating..Alpha.)) +
+  geom_bar() +
+  labs(title="Histogram for ProsperRating (Alpha) (Post-2009)") +
+  labs(x="Propsper Rating (Alpha)", y="Count") +
+  scale_x_discrete(limits=c("AA","A","B","C","D","E","HR","NC")) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+
+> I want to see if the distributions of credit ratings are the same for\
+pre-2009 listings and post-2009 listings. I have to re-arrange the ratings from\
+best to worse for the x-axis. Pre-2009 listings have high numbers of B-rated,\
+C-rated, and D-rated ratings. The number of AA-rated listings is also more than\
+the number of A-rated listings. Post-2009 listings have high numbers of\
+A-rated, B-rated, C-rated, and D-rated listings. The number of AA-rated\
+listings is significantly lower than the number of A-rated listings.
+
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Univariate_Plots4}
+ggplot(data=loan_data, aes(loan_data$LoanStatus)) +
+  geom_bar() +
+  labs(title="Histogram for Loan Status") +
+  scale_x_discrete(limits=c("Cancelled","Completed","Current",
+                            "FinalPaymentInProgress","Past Due (1-15 days)",
+                            "Past Due (16-30 days)","Past Due (31-60 days)",
+                            "Past Due (61-90 days)","Past Due (91-120 days)", 
+                            "Past Due (>120 days)","Defaulted","Chargedoff")) +
+  labs(x="Loan Status", y="Count") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+
+> I want to see the status of the loans. I have to re-arrange the status of\
+the loans that are past due.
+
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Univariate_Plots5}
+ggplot(data=subset(loan_data,as.character(loan_data$ProsperScore)!=""),
+       aes(ProsperScore)) +
+  geom_histogram() +
+  labs(title="Histogram for ProsperRating (Alpha)") +
+  scale_x_continuous(breaks = seq(1,11,by=1)) +
+  labs(x="Credit Grade", y="Count") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+> I want to see the distribution of ProsperScore, which is a custom risk score \
+built using historical Prosper data. From the provided data variables\
+definitions, the score should be from 1 to 10, with 10 being the best score.\
+I wonder why there are some listings with score equal to 11.
+
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Univariate_Plots6}
+ggplot(data=loan_data, aes(factor(Term))) +
+  geom_bar() +
+  labs(title="Histogram for Term") +
+  labs(x="Term (Months)", y="Count") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(axis.text.x = element_text(angle = 0, hjust = 1))
+
+```
+```{r echo=FALSE,message=FALSE, warning=FALSE, Univariate_Plots7}
+table(loan_data$Term)
+```
+
+> There are only 3 available terms for loans: 12 months, 36 months and 60\
+months. Most listings are due in 36 months.
+
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Univariate_Plots8}
+ggplot() +
+  geom_histogram(data=loan_data, aes(BorrowerAPR,color="BorrowerAPR"),
+                 fill = "red", alpha = 0.2) +
+  labs(title="Histogram BorrowerAPR") +
+  labs(x="Rate", y="Count") +
+  scale_x_continuous(labels = scales::percent) +
+  scale_colour_manual("Rate", values = c("red", "blue")) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(axis.text.x = element_text(angle = 0, hjust = 1))
+
+```
+
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Univariate_Plots8_2}
+ggplot() +
+  geom_histogram(data=loan_data, aes(BorrowerRate,color="BorrowerRate"),
+                 fill = "blue", alpha = 0.2) +
+  labs(title="Histogram & BorrowerRate") +
+  labs(x="Rate", y="Count") +
+  scale_x_continuous(labels = scales::percent) +
+  scale_colour_manual("Rate", values = c("red", "blue")) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(axis.text.x = element_text(angle = 0, hjust = 1))
+
+```
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Univariate_Plots9}
+summary(loan_data$BorrowerAPR)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE,Univariate_Plots10}
+summary(loan_data$BorrowerRate)
+```
+
+>Both BorrowerAPR and Borrowerate have normal distribution. Mean Borrower APR
+is 21.88% and mean borrower rate is 19.28%. This makes sense because APR is a
+broader measure of the cost of a mortgage. It includes the interest rate
+(borrower rate) plus other costs such as broker fees, discount points and some
+closing costs
+(https://www.bankrate.com/finance/mortgages/apr-and-interest-rate.aspx).
+
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Univariate_Plots11}
+ggplot(data=loan_data, aes(LenderYield)) +
+  geom_histogram() +
+  labs(title="Histogram for Lender Yield") +
+  labs(x="Rate", y="Count") +
+  scale_x_continuous(labels = scales::percent) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(axis.text.x = element_text(angle = 0, hjust = 1))
+
+```
+
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Univariate_Plots12}
+ggplot(data=loan_data, aes(EstimatedEffectiveYield)) +
+  geom_histogram() +
+  labs(title="Histogram for Estimated Effective Yield") +
+  labs(x="Rate", y="Count") +
+  scale_x_continuous(labels = scales::percent) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(axis.text.x = element_text(angle = 0, hjust = 1))
+
+```
+```{r echo=FALSE,message=FALSE, warning=FALSE, Univariate_Plots13}
+ggplot(data=loan_data, aes(EstimatedLoss)) +
+  geom_histogram() +
+  labs(title="Histogram for Estimated Loss") +
+  labs(x="Rate", y="Count") +
+  scale_x_continuous(labels = scales::percent) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(axis.text.x = element_text(angle = 0, hjust = 1))
+
+```
+```{r echo=FALSE, message=FALSE, warning=FALSE,Univariate_Plots14}
+ggplot(data=loan_data, aes(EstimatedReturn)) +
+  geom_histogram() +
+  labs(title="Histogram for Estimated Return") +
+  labs(x="Rate", y="Count") +
+  scale_x_continuous(labels = scales::percent) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(axis.text.x = element_text(angle = 0, hjust = 1))
+
+```
+```{r echo=FALSE,message=FALSE, warning=FALSE, Univariate_Plots15}
+summary(loan_data$LenderYield)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE,Univariate_Plots16}
+summary(loan_data$EstimatedEffectiveYield)
+```
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Univariate_Plots17}
+summary(loan_data$EstimatedLoss)
+```
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Univariate_Plots18}
+summary(loan_data$EstimatedReturn)
+```
+
+> Mean lender yield (interest rate less servicing fee) = 18.27%, mean \
+estimated effective yield = 16.9%, mean estimated loss = 8%, mean estimated \
+return = 9.6%. Lender yield, estimated effective yield and estimated loss \
+have normal distribution but with a small peak on the right side. It seems \
+that the higher returns are associated with higher risk of loss. The net \
+estimated return therefore has normal distribution without a small peak \
+on the right side.
+
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Univariate_Plots19}
+ggplot(data=subset(loan_data,as.character(loan_data$ListingCategory..numeric.)!=""),
+       aes(ListingCategory..numeric.)) +
+  geom_bar() +
+  labs(title="Histogram for Listing Category") +
+  scale_x_continuous(breaks=seq(0,20,by=1)) +
+  labs(x="Category", y="Count") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+
+> Majority of the loan category is debt consolidation.
+
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Univariate_Plots20}
+ggplot(data=subset(loan_data,as.character(loan_data$Occupation)!=""),
+       aes(Occupation)) +
+  geom_bar() +
+  labs(title="Histogram for Occupation") +
+  labs(x="Occupation", y="Count") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+```
+
+
+> The histogram for occupation shows 2 significant peaks: Other and \
+Professional. This is because the term 'Professional' is a broard term,\
+and 'Other' is a blanket term for other occupations that may not be listed \
+in the survey.
+
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Univariate_Plots21}
+ggplot(data=subset(loan_data,as.character(loan_data$EmploymentStatus)!=""),
+       aes(EmploymentStatus)) +
+  geom_bar() +
+  labs(title="Histogram for Employment Status") +
+  labs(x="Employment Status", y="Count") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+
+> The histogram for employment status shows that most borrowers are employed.\
+I wonder what are the differnece between 'Employed' and 'Full-time'.
+
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Univariate_Plots22}
+ggplot(data=subset(loan_data,as.character(loan_data$EmploymentStatusDuration)!=""),
+       aes(EmploymentStatusDuration)) +
+  geom_histogram() +
+  scale_x_log10(breaks= c(2,5,10,20,50,100,200,500,1000)) +
+  xlab('Months') +
+  labs(title="Histogram for Employment Status Duration") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+```
+
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Univariate_Plots23}
+summary(loan_data$EmploymentStatusDuration)
+```
+
+
+> Histogram for employment duration shows that majority of the borrowers have\
+been employed less than 6 years. The median duration is 67 months.
+
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Univariate_Plots24}
+ggplot(data=subset(loan_data,as.character(loan_data$IsBorrowerHomeowner)!=""),
+       aes(IsBorrowerHomeowner)) +
+  geom_bar() +
+  labs(title="Histogram for Homeowner Status") +
+  labs(x="Homeowner Status", y="Count") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+
+> The portion of borrowers who are homeowners and the portion of borrowers who are not homeowners are close.
+
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Univariate_Plots25}
+ggplot(data=subset(loan_data,as.character(loan_data$IncomeRange)!=""), 
+       aes(IncomeRange)) +
+  geom_bar() +
+  labs(title="Histogram for Income Range") +
+  scale_x_discrete(limits=c("Not displayed","Not employed","$0","$1-24,999",
+                            "$25,000-49,999","$50,000-74,999","$75,000-99,999",
+                            "$100,000+")) +
+  labs(x="Income Range", y="Count") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Univariate_Plots26}
+summary(loan_data$StatedMonthlyIncome * 12)
+```
+
+
+> The income range of borrowers are left-skewd normally distributed, with\
+mean stated annual income = $67,296 and median stated annual income = $56,000.
+
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Univariate_Plots27}
+ggplot(data=subset(loan_data,loan_data$CreditScoreRangeLower!=""), 
+       aes((CreditScoreRangeLower + CreditScoreRangeUpper)/2)) +
+  geom_bar() +
+  labs(title="Histogram for Credit Score") +
+  labs(x="Credit Score", y="Count") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+
+> Since the lower range and upper range of credit score provided by a \
+consumer credit rating agency, I take the mid points and plot them. The \
+credit score of the borrowers are left-skewed normally distributed. I suspect \
+that one of the factors used to determine a credit score is the income.
+
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Univariate_Plots28}
+ggplot(data=subset(loan_data,loan_data$CurrentCreditLines!=""), 
+       aes(CurrentCreditLines)) +
+  geom_bar() +
+  labs(title="Histogram for Current Credit Lines") +
+  labs(x="Number of Credit Lines", y="Count") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Univariate_Plots29}
+ggplot(data=subset(loan_data,loan_data$OpenCreditLines!=""), 
+       aes(OpenCreditLines)) +
+  geom_bar() +
+  labs(title="Histogram for Open Credit Lines") +
+  labs(x="Number of Open Credit Lines", y="Count") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+```{r echo=FALSE,message=FALSE, warning=FALSE, Univariate_Plots30}
+ggplot(data=subset(loan_data,loan_data$OpenRevolvingAccounts!=""), 
+       aes(OpenRevolvingAccounts)) +
+  geom_bar() +
+  labs(title="Histogram for Open Revolving Accounts") +
+  labs(x="Number of Accounts", y="Count") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Univariate_Plots31}
+summary(loan_data$CurrentCreditLines)
+```
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Univariate_Plots32}
+summary(loan_data$OpenCreditLines)
+```
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Univariate_Plots33}
+summary(loan_data$OpenRevolvingAccounts)
+```
+
+> Number of current credit lines, number of open credit lines, and number of\
+open revolving accounts are right-skewed normally distributed. I wonder whether\
+these are correlated with the borrower's credit score, the listing's credit\
+grade, and listing's estimated loss.
+
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Univariate_Plots34}
+ggplot(data=subset(loan_data,loan_data$OpenRevolvingMonthlyPayment!=""),
+       aes(OpenRevolvingMonthlyPayment)) +
+  geom_histogram() +
+  labs(title="Histogram for Open Revolving Monthly Payments") +
+  scale_x_log10(breaks= c(10,20,50,100,200,500,1000,2000,5000,10000))+
+  labs(x="USD", y="Count") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+```{r echo=FALSE,message=FALSE, warning=FALSE, Univariate_Plots35}
+ggplot(data=subset(loan_data,loan_data$CurrentDelinquencies!=""), 
+       aes(CurrentDelinquencies)) +
+  geom_histogram() +
+  scale_x_continuous() +
+  xlim(0,20) +
+  ylim(0,15000) +
+  labs(title="Histogram for Current Delinquencies") +
+  labs(x="Number of Delinquencies", y="Count") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+```{r echo=FALSE,message=FALSE, warning=FALSE, Univariate_Plots36}
+ggplot(data=subset(loan_data,loan_data$AmountDelinquent!=""),
+       aes(AmountDelinquent)) +
+  geom_histogram() +
+  scale_x_log10(breaks= c(10,20,50,100,200,500,1000,2000,5000,10000,20000,
+                          50000,100000)) +
+  labs(title="Histogram for Amount Delinquent") +
+  labs(x="USD", y="Count") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE,Univariate_Plots37}
+ggplot(data=subset(loan_data,loan_data$LoanOriginalAmount!=""),
+       aes(LoanOriginalAmount)) +
+  geom_histogram() +
+  scale_x_log10(breaks= c(10,20,50,100,200,500,1000,2000,5000,10000,20000,
+                          50000,100000)) +
+  labs(title="Histogram for Original Loan Amount") +
+  labs(x="USD", y="Count") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+# Univariate Analysis
+
+### What is the structure of your dataset?
+The data set consists of 81 variables and 113,937 records. Each record contains
+the information of the loan listing, which include loan key, interest rate,
+estimated return rate, estimated loss rate, loan amount, loan category, credit
+rating, borrower information, etc.
+
+### What is/are the main feature(s) of interest in your dataset?
+The main features in the dataset are borrower rate, estimated effective yield,
+estimated loss rate, estimated return rate, and credit rating of a loan. I
+would like to find out what features determine the mentioned values. I suspect
+that the main factors should include the annual income of borrower, employment
+status, credit score, number of open credit lines, number of open revolving
+accounts, current delinquencies, and amount delinquent.
+
+I suspect that the high annual income and employed status will result in higher
+credit score. The small number of credit lines, revolving accounts, and
+delinquencies will also result in higher credit score. Higher credit score
+should result in lower borrower rate, lower estimated loss, and better credit
+rating of the listing.
+
+### What other features in the dataset do you think will help support your nvestigation into your feature(s) of interest?
+Other factors that may determine the credit score include the size of the loan
+orignal amount, employment duration, TotalProsperPaymentsBilled,
+%OnTimeProsperPayments vs %LateProsperPayments, ProsperPrincipalOutstanding,
+and number of recommendations the borrower receives.
+
+### Did you create any new variables from existing variables in the dataset?
+I only transformed the monthly stated income to annual by multiplying with 12
+as I would like to see whether the monthly stated income tallies with the
+column IncomeRange in terms of their distributions.
+
+I also find the mid point of borrower's credit score by summing lower range and
+upper range, and then dividing by 2.
+
+### Of the features you investigated, were there any unusual distributions?
+
+I log-transformed the right skewed of employment durations, revolving monthly
+payments, amount delinquent, and the size of orignal loan amount.
+
+
+# Bivariate Plots Section
+
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Bivariate_Plots1}
+cor(loan_data[c("BorrowerRate","EstimatedLoss","EstimatedReturn",
+                "ProsperRating..numeric.","ProsperScore",
+                "EmploymentStatusDuration","CreditScoreRangeLower",
+                "CreditScoreRangeUpper","OpenCreditLines",
+                "OpenRevolvingAccounts","OpenRevolvingMonthlyPayment",
+                "CurrentDelinquencies","AmountDelinquent","StatedMonthlyIncome",
+                "TotalProsperPaymentsBilled","OnTimeProsperPayments",
+                "LoanOriginalAmount","Recommendations")], use = "complete.obs")
+
+```
+
+> There is a high correlation between BorrowerRate and Estimated Loss.\
+This makes sense since investors should require higher rates for riskier assets.\
+As expected, the BorrowerRate is negatively correlated with ProsperScore,\
+ProsperRating and CreditRating. I wonder what factors are used to determine \
+the interest rate for each listing.
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Bivariate_Plots2}
+ggplot(aes(x=StatedMonthlyIncome,y=BorrowerRate), data=loan_data) +
+  geom_jitter(alpha=0.02) +
+  xlim(0,20000) +
+  xlab('$') +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+> From the scatterplot, it is not very clear whether StatedMonthlyIncome is \
+correlated with the BorroweRate. Let's try a boxplot
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Bivariate_Plots3}
+
+ggplot(data=subset(loan_data,as.character(IncomeRange)!=""),
+       aes(x=IncomeRange,y=BorrowerRate)) +
+  geom_boxplot() +
+  scale_x_discrete(limits=c("Not displayed","Not employed","$0","$1-24,999",
+                            "$25,000-49,999","$50,000-74,999","$75,000-99,999",
+                            "$100,000+")) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE,Bivariate_Plots4}
+
+describeBy(loan_data$BorrowerRate, group=loan_data$IncomeRange, 
+           mat=TRUE)[c(7,8,1,2,4,5,6,3),]
+
+```
+
+
+> From the boxplot, it is as expected that the higher the income the borrower\
+has, the less risky the loan is. However, it is strange that the median\
+BorrowerRate for the group whose IncomeRange = $0 is lower than those with \
+IncomeRange $1-74,999.
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE,Bivariate_Plots5}
+
+ggplot(data=subset(loan_data,as.character(EmploymentStatus)!=""),
+       aes(x=EmploymentStatus,y=BorrowerRate)) +
+  geom_boxplot() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Bivariate_Plots6}
+
+describeBy(loan_data$BorrowerRate, group=loan_data$EmploymentStatus, mat=TRUE)
+
+```
+
+> As expected, the median BorrowerRate for borrowers who are employed are\
+lower than those who are not employed. However, I am curious why the\
+median BorrowerRate for borrowers who are part-timers are lower than \
+those who are full-timers.
+
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Bivariate_Plots7}
+ggplot(aes(x=(CreditScoreRangeLower+CreditScoreRangeUpper)/2,y=BorrowerRate),
+       data=loan_data) +
+  geom_jitter(alpha=0.01)
+```
+
+> From the scatterplot, it is clear that the higher the credit score the \
+borrower has, the lower the BorrowerRate is required.
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Bivariate_Plots8}
+
+ggplot(data=subset(loan_data,as.character(ProsperRating..Alpha.)!=""),
+       aes(x=ProsperRating..Alpha.,y=BorrowerRate)) +
+  geom_boxplot() +
+  scale_x_discrete(limits=c("AA","A","B","C","D","E","HR"))
+
+```
+
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Bivariate_Plots9}
+
+describeBy(loan_data$BorrowerRate, group=loan_data$ProsperRating..Alpha.,
+           mat=TRUE)[c(1,3,2,4,5,6,7,8),]
+
+```
+
+> This is as expected since I suspect that the credit score of the borrower\
+will determine the credit rating of the loan, and the worse loan rating will \
+require the higher interest rate.
+
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Bivariate_Plots10}
+ggplot(data=subset(loan_data,Term=!""),aes(x=as.factor(Term),y=BorrowerRate)) +
+  geom_boxplot()+
+  xlab('Term (Months)')
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE,Bivariate_Plots11}
+
+describeBy(loan_data$BorrowerRate, group=loan_data$Term, mat=TRUE)
+
+```
+
+> As expected, the shorter term (12-month) loan has lower median BorrowerRate than the longer term (36 and 60 month) has, since the longer-term loans are more exposed to interest rate risks. However, I am surprised that the difference between the BorrowerRate of 36-month loan and 60-month loan is small.
+
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Bivariate_Plots12}
+ggplot(data=subset(loan_data,ListingCategory..numeric.!=""),
+       aes(x=as.factor(ListingCategory..numeric.),y=BorrowerRate)) +
+  geom_boxplot() +
+  xlab('Listing Category')
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE,Bivariate_Plots13}
+
+describeBy(loan_data$BorrowerRate, 
+           group=loan_data$ListingCategory..numeric., mat=TRUE)
+
+```
+
+> Differnt categories of loans can have different BorrowerRate,\
+but I will not go deeper.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE,Bivariate_Plots14}
+ggplot(aes(x=OpenCreditLines,y=BorrowerRate), data=loan_data) +
+  geom_jitter(alpha=0.01)
+```
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Bivariate_Plots15}
+ggplot(aes(x=OpenRevolvingAccounts,y=BorrowerRate), data=loan_data) +
+  geom_jitter(alpha=0.01)
+```
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Bivariate_Plots16}
+ggplot(aes(x=CurrentDelinquencies,y=BorrowerRate), data=loan_data) +
+  geom_jitter(alpha=0.01) +
+  xlim(0,20)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE,Bivariate_Plots17}
+ggplot(aes(x=AmountDelinquent,y=BorrowerRate), data=loan_data) +
+  geom_jitter(alpha=0.01) +
+  xlim(0,10000) +
+  xlab('Amount Delinquent ($)')
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE,Bivariate_Plots18}
+ggplot(aes(x=
+PublicRecordsLast10Years,y=BorrowerRate), data=loan_data) +
+  geom_jitter(alpha=0.01) +
+  xlim(0,10)
+```
+
+
+> There is no clear correlation between number of credit lines/open revolving\
+accounts and BorrowerRate. However, the number of delinquencies/public records\
+is positively correlated with the BorrowerRate.
+
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Bivariate_Plots19}
+ggplot(aes(x=
+LoanOriginalAmount,y=BorrowerRate), data=loan_data) +
+  geom_jitter(alpha=0.01) +
+  xlab('Loan Original Amount ($)')
+```
+
+> The size of the loan does not seem to be correlated with the BorrowerRate.
+
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Bivariate_Plots20}
+summary(lm(formula = BorrowerRate ~ StatedMonthlyIncome, data=loan_data))
+```
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Bivariate_Plots21}
+summary(lm(formula = BorrowerRate ~ CreditScoreRangeLower, data=loan_data))
+```
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Bivariate_Plots22}
+summary(lm(formula = BorrowerRate ~ EmploymentStatus, data=loan_data))
+```
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Bivariate_Plots23}
+summary(lm(formula = BorrowerRate ~ CurrentDelinquencies, data=loan_data))
+```
+
+> The R-Squared values show that it is not sufficient to explain the borrower \
+rate with just one variable.
+
+# Bivariate Analysis
+
+### Talk about some of the relationships you observed in this part of the \
+investigation. How did the feature(s) of interest vary with other features in \
+the dataset?
+
+The BorrowerRate is positively and strongly correlated with the Prosper Credit
+Rating. It is likely that the rate ranges are determined by the loan credit
+rating.
+
+Other features that are positively, though less strongly correlated with
+BorrowerRate, include staetd monthly income, borrower's credit score, number of
+delinquents, and number of public records in the past 10 years.
+
+The features that do not seem to be correlated with BorrowerRate are number of
+open credit lines, number of open revolving accounts, and size of the loan.
+
+### Did you observe any interesting relationships between the other features \
+(not the main feature(s) of interest)? The interest rate also depends on the
+term of the loan. Shorter term loans have lower required interest rates than
+longer term loans do. Another interesting observation is that the median
+interest rate of the loan category 10 (Cosmetic Operation) is significantly
+higher than that of loan category 4 (Personal Loan), 25% vs 15%.
+
+### What was the strongest relationship you found?
+The BorrowerRate and the Prosper Credit Rating of the listing are positively
+and strongly correlated. This is expected as the rating is classified by its
+riskiness. The more interesting question is how do we determine the riskiness
+of each listing.
+
+
+# Multivariate Plots Section
+
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Multivariate_Plots1}
+ggplot(aes(x=
+(ProsperPaymentsLessThanOneMonthLate+
+ProsperPaymentsOneMonthPlusLate)/TotalProsperPaymentsBilled,y=BorrowerRate),
+data=loan_data) +
+  geom_jitter(alpha=0.01) +
+  xlim(0,0.3) +
+  xlab('%Late Prosper Payments')
+```
+
+
+> The Prosper settlement records do not seem to be correlated to the BorrowerRate.
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Multivariate_Plots2}
+ggplot(aes(x=(CreditScoreRangeLower+CreditScoreRangeUpper)/2,y=BorrowerRate),
+       data=subset(loan_data,as.character(ProsperScore)!="")) +
+  geom_jitter(aes(color=as.factor(Term))) +
+  scale_color_brewer(type = 'qual') +
+  xlab('Credit Score')
+```
+
+> Short term listings (12-month) clearly have lower BorrowRate. Also, as the\
+credit score increases, the BorrowRate for short-term listings seem to decrease.\
+However, for the longer term listings (36-month and 60-month), the variance is\
+high. It is not clear which one has lower BorrowRate, and whether credit\
+score matters.
+
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Multivariate_Plots3}
+ggplot(aes(x=(CreditScoreRangeLower+CreditScoreRangeUpper)/2,y=BorrowerRate),
+       data=subset(loan_data,as.character(ProsperScore)!="")) +
+  geom_jitter(aes(color=as.factor(EmploymentStatus)), alpha = 0.5) +
+  scale_color_brewer(type = 'qual') +
+  xlab('Credit Score')
+```
+
+> This plot is crowded by Employed status. It does not tell anything much.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE,Multivariate_Plots4}
+ggplot(aes(x=(CreditScoreRangeLower+CreditScoreRangeUpper)/2,y=BorrowerRate),
+       data=subset(loan_data,as.character(ProsperScore)!="")) +
+  geom_jitter(aes(color=ProsperRating..Alpha.), alpha = 0.1) +
+  scale_color_brewer(type = 'seq',palette='Reds',limits=c("AA","A","B","C",
+                                                          "D","E","HR")) +
+  xlab('Credit Score')
+```
+
+> BorrowerRate are clearly layered by ProsperRating..Alpha. The BorrowerRate \
+also has moderate negative correlation with the credit score of the borrower.
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE,Multivariate_Plots5}
+ggplot(aes(x=(CreditScoreRangeLower+CreditScoreRangeUpper)/2,y=BorrowerRate),
+       data=subset(loan_data,as.character(ProsperScore)!="")) +
+  geom_jitter(aes(color=ProsperRating..Alpha.)) +
+  scale_color_brewer(type = 'seq',palette='Reds',limits=c("AA","A","B","C",
+                                                          "D","E","HR")) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  facet_wrap(~Term) + 
+  xlab('Credit Score')
+
+```
+
+> Shorter term listings clearly have lower BorrowerRate. The rates are further \
+layered by ProsperRating..Alpha. We can also see moderate negative correlation \
+between BorrowerRate and CreditScore.
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE,Multivariate_Plots6}
+ggplot(aes(x=StatedMonthlyIncome,y=BorrowerRate),
+       data=subset(loan_data,as.character(ProsperScore)!="")) +
+  geom_jitter(aes(color=ProsperRating..Alpha.)) +
+  scale_color_brewer(type = 'seq',palette='Blues',limits=c("AA","A","B","C","D",
+                                                           "E","HR")) +
+  xlim(0,30000) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  facet_wrap(~Term) +
+  xlab('Stated Monthly Income ($)')
+
+```
+
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Multivariate_Plots7}
+m1 <- lm(formula = I(BorrowerRate) ~ CreditScoreRangeLower, 
+         data = subset(loan_data,,as.character(ProsperScore)!=""))
+m2 <- update(m1, ~. + StatedMonthlyIncome)
+m3 <- update(m2, ~. + CurrentDelinquencies)
+m4 <- update(m3, ~. + ProsperRating..Alpha.)
+m5 <- update(m4, ~. + Term)
+m6 <- update(m5, ~. + EmploymentStatus)
+mtable(m1,m2,m3,m4,m5,m6)
+```
+
+
+The variables in this linear model can account for 76.4% of the variance in the
+BorrowerRate of the loan listings. The most important factor is the credit
+rating of the loan, followed by credit score of the borrower. Other variables
+poorly contribute to the prediction.
+
+# Multivariate Analysis
+
+### Talk about some of the relationships you observed in this part of the \
+investigation. Were there features that strengthened each other in terms of \
+looking at your feature(s) of interest?
+
+ProsperRating..Alpha clearly determine the ranges of the BorrowRate. The
+BorrowerRate also has moderate negative correlation with the credit score of
+the borrower. The stated monthly income has weaker correlation to the borrower
+rate.
+
+The 12-month clearly has lower borrower rate than those of 36-month and
+60-month loans.
+
+### Were there any interesting or surprising interactions between features?
+
+Yes, I am surprised that the monthly stated income does not matter much in
+determining the borrower rates. Also, I would have thought that the 60-month
+loans would have higher interest rates than those of the 36-month loans since
+the former are more exposed to the interest rate change risk.
+
+### OPTIONAL: Did you create any models with your dataset? Discuss the \
+strengths and limitations of your model.
+
+Yes, I created models to predict a loan's borrower rate from borrower's credit
+score, stated monthly income, Prosper credit rating of the listing, loan term,
+and borrower's employment status. These variables can account for 76.4% of the
+variance in the BorrowerRate. However, I still cannot find determining factors
+for credit rating of the loan listings.
+
+------
+
+# Final Plots and Summary
+
+
+### Plot One
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Summary1}
+
+ggplot(data=subset(loan_data,as.character(ProsperRating..Alpha.)!=""),
+       aes(x=ProsperRating..Alpha.,y=BorrowerRate)) +
+  geom_boxplot() +
+  scale_x_discrete(limits=c("AA","A","B","C","D","E","HR"))
+
+```
+
+### Description One
+> The loans are categorized by its riskiness from low risk to high risk (AA -> HR). The riskier the loans are, the higher interest rates they require.
+
+### Plot Two
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Summary2}
+ggplot(aes(x=(CreditScoreRangeLower+CreditScoreRangeUpper)/2,y=BorrowerRate),
+       data=subset(loan_data,as.character(ProsperScore)!="")) +
+  geom_jitter(aes(color=ProsperRating..Alpha.)) +
+  scale_color_brewer(type = 'seq',palette='Reds',limits=c("AA","A","B","C","D",
+                                                          "E","HR")) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  facet_wrap(~Term) +
+  xlab('Credit Score')
+
+```
+
+
+### Description Two
+> Shorter term listings have lower BorrowerRate. The rates are further layered \
+by ProsperRating..Alpha. We can also see moderate negative correlation between\
+BorrowerRate and CreditScore.
+
+
+
+### Plot Three
+```{r echo=FALSE, message=FALSE, warning=FALSE, Summary3}
+ggplot(aes(x=StatedMonthlyIncome,y=BorrowerRate),
+       data=subset(loan_data,as.character(ProsperScore)!="")) +
+  geom_jitter(aes(color=ProsperRating..Alpha.)) +
+  scale_color_brewer(type = 'seq',palette='Blues',limits=c("AA","A","B","C","D",
+                                                           "E","HR")) +
+  xlim(0,30000) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  facet_wrap(~Term) +
+  xlab('Stated Monthly Income ($)')
+
+```
+
+### Description Three
+
+> In comparison with Plot2, the positive correlation between borrower rate and\
+stated monthly income is weaker than that between borrower rate and borrower's\
+credit score although one would expect that borrower's income should play a\
+critical role in determining the riskness of a loan.
+
+------
+
+# Reflection
+
+The loan data set has 113,937 records across 81 variables. There is a clear gap
+during pre-2009 and post-2009, possibly due to the Financial Crisis in late
+2008. The focus of this EDA is on the loan listed post-2009.
+
+My objective is to determine what determines the interest rate a borrower has
+to pay for his loan. I suspect that the factors would include things like his
+credit score, his past settlement history, amount of debts he hold, his income,
+his employment, and loan term.
+
+Firstly, I examined many variables, plotting out their histograms and see their
+staitstics. Next I explored the relationships between two variables. As
+expected, there is a strong positive correlation between interest rate and the
+credit rating of a loan, but my main question is what determines which credit
+rating a loan will receive. The scatterplot between interest rate and
+borrower's credit score shows a moderate positive correlation. However, other
+variables such as number of open credit lines, number of open revolving
+accounts, stated monthly income, and loan size do not show clear correlation.
+
+When I used facet_wrap to see whether the loan term affects interest rates, I
+found that the 12-month loan has lower interest rate as expected. However, I am
+surprised to find that there is almost no difference in the median interest
+rates of 36-month and 60-month loans.
+
+When I tried to find a linear model to predict a borrower's interest rate, only
+credit rating of the loan and borrower's credit score significantly contribute
+to the R-squared value. Other factors' contributions are negligible.
+
+For future exploration, I may have to include things like loan categories,
+occupations, and collaterals in order to better determine the required interest
+rates.
